@@ -39,7 +39,7 @@ else
     echo "$message"
 fi
 
-if grep -qF "javafx" <<< "$message"; then
+if grep -iqF "javafx" <<< "$message"; then
     echo "[ INFO ] error message mentions javafx."
 else
     echo "[ INFO ] error message does not mention javafx."
