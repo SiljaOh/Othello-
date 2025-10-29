@@ -54,7 +54,7 @@ echo "[ INFO ] starting a new virtual display.."
 Xvfb :99 -screen 0 1024x768x24 &
 
 # try to run the jar with the javafx libraries
-timeout --foreground 5s java -Djava.library.path=/usr/local/openjdk-11/ --module-path "/javafx-sdk-17.0.9/lib/" --add-modules "javafx.base,javafx.controls,javafx.graphics,javafx.fxml,javafx.media,javafx.swing" -jar "$jar_file"
+timeout --foreground 5s java -Djava.library.path=/opt/java/openjdk/ --module-path "/javafx-sdk-21.0.9/lib/" --add-modules "javafx.base,javafx.controls,javafx.graphics,javafx.fxml,javafx.media,javafx.swing" -jar "$jar_file"
 # the exit code of the jar execution
 exit_code=$?
 
