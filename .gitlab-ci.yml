@@ -1,83 +1,68 @@
-image: kleinsamuel/oth-container:1.0
-
+---
+image: gitlab2.cip.ifi.lmu.de:5050/bio/templates/dockerfiles/jdk21-javafx:1.0
 workflow:
-  name: "Workflow for the Othello assignment"
+  name: Workflow for the Othello assignment
   rules:
     - if: $CI_COMMIT_BRANCH =~ /^verify\//
     - if: $CI_COMMIT_BRANCH =~ /^grading\//
-
 stages:
-    - build
-    - test
-    - check-jar
-
+  - build
+  - test
+  - check-jar
 # install the java dependencies
 install-dependencies:
   stage: build
-  script:
-    - mvn install -DskipTests
+  script: [mvn install -DskipTests]
   timeout: 10m
-
 # test the othello model class structure
 model-class-structure:
-    stage: test
-    rules:
-      - if: $CI_COMMIT_BRANCH =~ /^verify\/model/
-      - if: $CI_COMMIT_BRANCH =~ /^grading\//
-    script:
-        - mvn test -Dtest="BasicTest"
-    when: always
-    timeout: 5m
-
+  stage: test
+  rules:
+    - if: $CI_COMMIT_BRANCH =~ /^verify\/model/
+    - if: $CI_COMMIT_BRANCH =~ /^grading\//
+  script: [mvn test -Dtest="BasicTest"]
+  when: always
+  timeout: 5m
 # test the othello model correctness
 model-correctness:
-    stage: test
-    rules:
-      - if: $CI_COMMIT_BRANCH =~ /^verify\/model/
-      - if: $CI_COMMIT_BRANCH =~ /^grading\//
-    script:
-        - mvn test -Dtest="ModelTest"
-    when: always
-    timeout: 5m
-
+  stage: test
+  rules:
+    - if: $CI_COMMIT_BRANCH =~ /^verify\/model/
+    - if: $CI_COMMIT_BRANCH =~ /^grading\//
+  script: [mvn test -Dtest="ModelTest"]
+  when: always
+  timeout: 5m
 # test the othello model by following a certain game sequence
 game-sequence:
-    stage: test
-    rules:
-      - if: $CI_COMMIT_BRANCH =~ /^verify\/model/
-      - if: $CI_COMMIT_BRANCH =~ /^grading\//
-    script:
-        - mvn test -Dtest="GameSequenceTest"
-    when: always
-    timeout: 5m
-
+  stage: test
+  rules:
+    - if: $CI_COMMIT_BRANCH =~ /^verify\/model/
+    - if: $CI_COMMIT_BRANCH =~ /^grading\//
+  script: [mvn test -Dtest="GameSequenceTest"]
+  when: always
+  timeout: 5m
 # test whether a single jar file exists within the ./jar/ directory
 jar-exists:
-    stage: check-jar
-    rules:
-      - if: $CI_COMMIT_BRANCH =~ /^verify\/jar/
-      - if: $CI_COMMIT_BRANCH =~ /^grading\//
-    script:
-        - /bin/bash ./src/test/test-jar-exists.sh
-    when: always
-    timeout: 5m
-
+  stage: check-jar
+  rules:
+    - if: $CI_COMMIT_BRANCH =~ /^verify\/jar/
+    - if: $CI_COMMIT_BRANCH =~ /^grading\//
+  script: [/bin/bash ./src/test/test-jar-exists.sh]
+  when: always
+  timeout: 5m
 jar-has-sources:
-    stage: check-jar
-    rules:
-      - if: $CI_COMMIT_BRANCH =~ /^verify\/jar/
-      - if: $CI_COMMIT_BRANCH =~ /^grading\//
-    script:
-        - /bin/bash ./src/test/test-jar-sources.sh
-    when: always
-    timeout: 5m
-
+  stage: check-jar
+  rules:
+    - if: $CI_COMMIT_BRANCH =~ /^verify\/jar/
+    - if: $CI_COMMIT_BRANCH =~ /^grading\//
+  script: [/bin/bash ./src/test/test-jar-sources.sh]
+  when: always
+  timeout: 5m
 jar-is-executable:
-    stage: check-jar
-    rules:
-      - if: $CI_COMMIT_BRANCH =~ /^verify\/jar/
-      - if: $CI_COMMIT_BRANCH =~ /^grading\//
-    script:
-        - /bin/bash ./src/test/test-jar-executable.sh
-    when: always
-    timeout: 5m
+  stage: check-jar
+  rules:
+    - if: $CI_COMMIT_BRANCH =~ /^verify\/jar/
+    - if: $CI_COMMIT_BRANCH =~ /^grading\//
+  script: [/bin/bash ./src/test/test-jar-executable.sh]
+  when: always
+  timeout: 5m
