@@ -6,7 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Othello implements Game{
-    private int[][] board;
+    private final int[][] board;
     private int movecount;
     private int player1count;
     private int player2count;
@@ -19,14 +19,16 @@ public class Othello implements Game{
         board[4][3] = 1;
     }
 
+    public int[][] getBoard() {
+        return board;
+    }
+
     @Override
     public boolean makeMove(boolean playerOne, int x, int y) {
-
         boolean isBlackTurn = (movecount % 2 == 0);
         if (playerOne != isBlackTurn) {
             return false;
         }
-
 
         List<Move> possible = getPossibleMoves(playerOne);
         boolean ispossible = possible.stream().anyMatch(m-> m.x==x && m.y==y);
@@ -111,15 +113,8 @@ public class Othello implements Game{
 
     @Override
     public List<Move> getPossibleMoves(boolean playerOne) {
-        if (movecount==0 && !playerOne) {return null;}
-
-
         boolean isBlackTurn = (movecount % 2 == 0);
-
-
-        if (playerOne != isBlackTurn) {
-            return null;
-        }
+        if (playerOne != isBlackTurn) return null;
 
         int player = playerOne ? 1 : 2;
         int opponent = playerOne ? 2 : 1;
@@ -129,7 +124,6 @@ public class Othello implements Game{
             for (int x = 0; x < 8; x++) {
                 if (board[y][x] != 0) continue;
                 boolean valid = false;
-
 
                 for (int dx = -1; dx <= 1 && !valid; dx++) {
                     for (int dy = -1; dy <= 1 && !valid; dy++) {
@@ -143,26 +137,9 @@ public class Othello implements Game{
                 if (valid) moves.add(new Move(x, y));
             }
         }
-
         return moves.isEmpty() ? null : moves;
     }
-    public boolean ispossibledirection(int x, int y, int dx, int dy, int player, int opponent){
-        boolean hasOpponentBetween=false;
-        int i = x+dx;
-        int j = y+dy;
 
-        while (i>=0 && i<8 && j>=0 && j<8 ){
-            if (board[j][i]==opponent){
-                hasOpponentBetween=true;
-            }else if (board[j][i]==player){
-                return hasOpponentBetween;
-            }else return false;
-            i+=dx;
-            j+=dy;
-        }
-
-        return false;
-    }
 
     @Override
     public String toString() {
