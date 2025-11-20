@@ -89,7 +89,7 @@ public class AI implements Player {
 
         int score = myDisc - oppDisc;
 
-        // mobility
+
         int myMob = g.getPossibleMoves(player).size();
         int oppMob = g.getPossibleMoves(!player).size();
         score += 5 * (myMob - oppMob);
