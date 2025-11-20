@@ -9,23 +9,21 @@ import java.util.Random;
 public class AI implements Player {
 
     private boolean isPlayerOne;
-    private Random rnd;
     private Othello game;
-    private int depth = 6;
+    private final int depth = 6;
 
     public AI() {}
 
     @Override
     public void init(int order, long t, Random rnd) {
         this.isPlayerOne = (order == 0);
-        this.rnd = rnd;
         this.game = new Othello();
     }
 
     @Override
     public Move nextMove(Move prevMove, long tOpponent, long t) {
 
-        // prevMove gehört zum Gegner
+
         if (prevMove != null) {
             boolean opp = !isPlayerOne;
             game.makeMove(opp, prevMove.x, prevMove.y);
@@ -34,7 +32,6 @@ public class AI implements Player {
         List<Move> moves = game.getPossibleMoves(isPlayerOne);
 
         if (moves.isEmpty()) {
-            // Kein Zug möglich → Pass
             game.pass();
             return null;
         }
@@ -55,8 +52,7 @@ public class AI implements Player {
             }
         }
 
-        if (bestMove != null)
-            game.makeMove(isPlayerOne, bestMove.x, bestMove.y);
+        if (bestMove != null) game.makeMove(isPlayerOne, bestMove.x, bestMove.y);
 
         return bestMove;
     }
@@ -84,7 +80,6 @@ public class AI implements Player {
             if (v > alpha) alpha = v;
             if (alpha >= beta) break;
         }
-
         return best;
     }
 
@@ -94,12 +89,11 @@ public class AI implements Player {
 
         int score = myDisc - oppDisc;
 
-        // Mobilität
+        // mobility
         int myMob = g.getPossibleMoves(player).size();
         int oppMob = g.getPossibleMoves(!player).size();
         score += 5 * (myMob - oppMob);
 
-        // Positionsgewichtung
         int[][] weights = {
                 {100, -25, 10, 5, 5, 10, -25, 100},
                 {-25, -50, 1, 1, 1, 1, -50, -25},
