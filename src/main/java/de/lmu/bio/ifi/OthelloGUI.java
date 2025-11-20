@@ -6,15 +6,19 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.List;
+import java.util.Random;
 
 public class OthelloGUI extends JFrame {
     private final Othello game;
     private final AI ai;
     private boolean playerTurn = true;
+    private Move lastMoveNotAI = null;
 
     public OthelloGUI() {
         game = new Othello();
-        ai = new AI(game, false);
+        ai = new AI();
+        ai.init(1, Integer.MAX_VALUE, new Random());
 
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(600, 600);
@@ -32,19 +36,41 @@ public class OthelloGUI extends JFrame {
         public BoardPanel() {
             addMouseListener(new MouseAdapter() {
                 public void mouseClicked(MouseEvent e) {
+                    if (game.gameStatus() != GameStatus.RUNNING) return; //ignore klicks if over
+
                     if (!playerTurn) return;
+
+                    //if i cannot move
+                    List<Move> mePossible = game.getPossibleMoves(true);
+                    if (mePossible == null || mePossible.isEmpty()) {
+                        game.pass();
+                        playerTurn = false;
+
+
+                        javax.swing.Timer t = new javax.swing.Timer(200, e2 -> doAIMove());
+                        t.setRepeats(false);
+                        t.start();
+                        repaint();
+                        return;
+
+                    }
+
                     int x = e.getX() / cellsize;
                     int y = e.getY() / cellsize;
 
+                    if (x < 0 || x > 7 || y < 0 || y > 7) return; //out of bounds
 
-                    //prüfen ob klick gueltig ist
+                    //proof ob klick gueltig ist
                     var possible = game.getPossibleMoves(true);
                     if (possible != null && possible.stream().anyMatch(m -> m.x == x && m.y == y)) {
                         game.makeMove(true, x, y);
+
+                        lastMoveNotAI = new Move(x, y);
+
                         playerTurn = false;
                         repaint();
 
-                        //2sek wait
+                        //1sec wait
                         javax.swing.Timer delayTimer = new javax.swing.Timer(1000, e2 -> doAIMove());
                         delayTimer.setRepeats(false);
                         delayTimer.start();
@@ -86,13 +112,54 @@ public class OthelloGUI extends JFrame {
 
     public void doAIMove() {
 
-        Move aiMove = ai.nextMove(null, 1, 1);
-        if (aiMove != null && game.getPossibleMoves(false) != null) {
-            boolean valid = game.getPossibleMoves(false).stream().anyMatch(m -> m.x == aiMove.x && m.y == aiMove.y);
-            if (valid) game.makeMove(false, aiMove.x, aiMove.y);
+        if (game.gameStatus() != GameStatus.RUNNING) return;
+
+        Move aiMove = ai.nextMove(lastMoveNotAI, 1, 1);
+        lastMoveNotAI = null;
+
+        List<Move> possibleWhite = game.getPossibleMoves(false);
+        if (possibleWhite == null || possibleWhite.isEmpty()) {
+            game.pass();
+            playerTurn = true;
+            repaint();
+            isGameOver();
+            return;
         }
+
+        if (aiMove != null) {
+            boolean valid = possibleWhite.stream().anyMatch(m -> m.x == aiMove.x && m.y == aiMove.y);
+            if (valid) {
+                game.makeMove(false, aiMove.x, aiMove.y);
+            } else {
+                game.pass();
+            }
+        } else game.pass();
+
         playerTurn = true;
         repaint();
+
+
+        isGameOver();
+
+    }
+
+    public void isGameOver() {
+        GameStatus status = game.gameStatus();
+        if (status != null && status != GameStatus.RUNNING) {
+            String message;
+            switch (status) {
+                case PLAYER_1_WON:
+                    message = "Black won";
+                    break;
+                case PLAYER_2_WON:
+                    message = "White won";
+                    break;
+                default:
+                    message = "Draw";
+                    break;
+            }
+            JOptionPane.showMessageDialog(this, message);
+        }
     }
 
 

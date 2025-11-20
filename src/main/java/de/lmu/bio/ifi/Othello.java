@@ -1,158 +1,211 @@
 package de.lmu.bio.ifi;
 
 import szte.mi.Move;
-
 import java.util.ArrayList;
 import java.util.List;
 
-public class Othello implements Game{
-    private final int[][] board;
+public class Othello implements Game {
+
+    private long playerBlackBoard;
+    private long playerWhiteBoard;
     private int movecount;
     private int player1count;
     private int player2count;
 
-    public Othello(){
-        board = new int[8][8];
-        board[3][3] = 2;
-        board[4][4] = 2;
-        board[3][4] = 1;
-        board[4][3] = 1;
+    private static final long RowA = 0x0101010101010101L; //??
+    private static final long RowH = 0x8080808080808080L;
+
+    private boolean islastPass = false; // for 2x pass
+
+    public Othello() {
+        initStartPosition();
     }
 
-    public int[][] getBoard() {
-        return board;
+    private void initStartPosition() {
+        playerBlackBoard = 0L;
+        playerWhiteBoard = 0L;
+
+        playerBlackBoard |= bit(3, 4);
+        playerBlackBoard |= bit(4, 3);
+
+        playerWhiteBoard |= bit(3, 3);
+        playerWhiteBoard |= bit(4, 4);
+
+        movecount = 4;
+        updatecounts();
+    }
+
+    private static int idx(int x, int y) { return y * 8 + x; } //calculate position in long form x and y
+    private static long bit(int x, int y) { return 1L << idx(x, y); } //makes long with only 00 and 1x 1 on the right position
+
+    private static long shiftN(long b)  { return b << 8; }
+    private static long shiftS(long b)  { return b >>> 8; }
+    private static long shiftE(long b)  { return (b & ~RowH) << 1; }
+    private static long shiftW(long b)  { return (b & ~RowA) >>> 1; }
+    private static long shiftNE(long b) { return (b & ~RowH) << 9; }
+    private static long shiftNW(long b) { return (b & ~RowA) << 7; }
+    private static long shiftSE(long b) { return (b & ~RowH) >>> 7; }
+    private static long shiftSW(long b) { return (b & ~RowA) >>> 9; }
+
+    private static long shiftDir(long b, int dir) {
+        switch (dir) {
+            case 0: return shiftN(b);
+            case 1: return shiftS(b);
+            case 2: return shiftE(b);
+            case 3: return shiftW(b);
+            case 4: return shiftNE(b);
+            case 5: return shiftNW(b);
+            case 6: return shiftSE(b);
+            case 7: return shiftSW(b);
+        }
+        return 0L;
     }
 
     @Override
     public boolean makeMove(boolean playerOne, int x, int y) {
-        boolean isBlackTurn = (movecount % 2 == 0);
-        if (playerOne != isBlackTurn) {
-            return false;
+        long move = bit(x, y);
+
+        long meBoard  = playerOne ? playerBlackBoard : playerWhiteBoard;
+        long oppBoard = playerOne ? playerWhiteBoard : playerBlackBoard;
+
+        if (((playerBlackBoard | playerWhiteBoard) & move) != 0L) return false; // if position is occupied
+
+        long flips = 0L;
+
+        for (int dir = 0; dir < 8; dir++) {
+            long t = shiftDir(move, dir);
+            long mask = 0L;
+
+            while ((t != 0L) && ((t & oppBoard) != 0L)) {
+                mask |= t;
+                t = shiftDir(t, dir);
+            }
+
+            if ((t != 0L) && ((t & meBoard) != 0L)) {
+                flips |= mask;
+            }
         }
 
-        List<Move> possible = getPossibleMoves(playerOne);
-        boolean ispossible = possible.stream().anyMatch(m-> m.x==x && m.y==y);
-        if(!ispossible) return false;
+        if (flips == 0L) return false;
 
-        int player= playerOne ? 1:2;
-        int opponent= playerOne ? 2:1;
+        meBoard ^= (move | flips); //bitwise xor
+        oppBoard ^= flips;
 
-        board[y][x] = player;
-
-        int[][] directions = {
-                {-1, -1}, {-1, 0}, {-1, 1},
-                {0, -1},          {0, 1},
-                {1, -1},  {1, 0},  {1, 1}
-        };
-        for (int[] d : directions) {
-            flipDirection(x,y,d[0],d[1],player,opponent,true);
+        if (playerOne) {
+            playerBlackBoard = meBoard;
+            playerWhiteBoard = oppBoard;
+        } else {
+            playerWhiteBoard = meBoard;
+            playerBlackBoard = oppBoard;
         }
 
         movecount++;
+        islastPass = false;
         updatecounts();
         return true;
     }
 
-    public boolean flipDirection(int x, int y, int dirX, int dirY, int player, int opponent, boolean doflip) {
-        int curX = x + dirX;
-        int curY = y + dirY;
-        boolean hasOpponentBetween = false;
+    @Override
+    public List<Move> getPossibleMoves(boolean playerOne) {
+        long meBoard  = playerOne ? playerBlackBoard : playerWhiteBoard;
+        long oppBoard = playerOne ? playerWhiteBoard : playerBlackBoard;
+        long empty = ~(playerBlackBoard | playerWhiteBoard); // all empty fields
 
-        while (curX >= 0 && curX < 8 && curY >= 0 && curY < 8) {
-            if (board[curY][curX] == opponent) {
-                hasOpponentBetween = true;
-                curX += dirX;
-                curY += dirY;
-            } else if (board[curY][curX] == player) {
-                if (!hasOpponentBetween) return false;
-                if (doflip) {
-                    int flipX = x + dirX;
-                    int flipY = y + dirY;
-                    while (flipX != curX || flipY != curY) {
-                        board[flipY][flipX] = player;
-                        flipX += dirX;
-                        flipY += dirY;
-                    }
-                }
-                return true;
-            } else {
-                return false;
+        long possibleMovesBoard = 0L;
+
+        for (int dir = 0; dir < 8; dir++) {
+            long potential = shiftDir(meBoard, dir) & oppBoard;
+            long t = potential;
+            while (t != 0L) {
+                t = shiftDir(t, dir) & oppBoard;
+                potential |= t;
             }
+            long candidates = shiftDir(potential, dir) & empty;
+            possibleMovesBoard |= candidates;
         }
-        return false;
 
-    }
-
-    public void updatecounts(){
-        player1count = player2count = 0;
-        for (int y = 0; y < 8; y++) {
-            for (int x = 0; x < 8; x++) {
-                if (board[y][x] == 1) player1count++;
-                else if (board[y][x] == 2) player2count++;
-            }
-
+        List<Move> list = new ArrayList<>();
+        long m = possibleMovesBoard;
+        while (m != 0L) {
+            int pos = Long.numberOfTrailingZeros(m);
+            m &= m - 1;
+            list.add(new Move(pos % 8, pos / 8));
         }
+
+        return list;
     }
 
     @Override
     public GameStatus gameStatus() {
-        List<Move> p1 = getPossibleMoves(true);
-        List<Move> p2 = getPossibleMoves(false);
+        List<Move> p1moves = getPossibleMoves(true);
+        List<Move> p2moves = getPossibleMoves(false);
 
-        boolean noMovesP1 = (p1 == null || p1.isEmpty());
-        boolean noMovesP2 = (p2 == null || p2.isEmpty());
+        boolean noP1 = (p1moves.isEmpty());
+        boolean noP2 = (p2moves.isEmpty());
 
-        if (movecount == 64 || (noMovesP1 && noMovesP2)) {
+        if ((noP1 && noP2) || movecount >= 64) {
             updatecounts();
             if (player1count > player2count) return GameStatus.PLAYER_1_WON;
             if (player2count > player1count) return GameStatus.PLAYER_2_WON;
             return GameStatus.DRAW;
         }
+
         return GameStatus.RUNNING;
     }
 
-    @Override
-    public List<Move> getPossibleMoves(boolean playerOne) {
-        boolean isBlackTurn = (movecount % 2 == 0);
-        if (playerOne != isBlackTurn) return null;
+    public void pass() {
+        movecount++;
+        islastPass = true;
+    }
 
-        int player = playerOne ? 1 : 2;
-        int opponent = playerOne ? 2 : 1;
-        List<Move> moves = new ArrayList<>();
+    public void updatecounts() {
+        player1count = Long.bitCount(playerBlackBoard);
+        player2count = Long.bitCount(playerWhiteBoard);
+    }
 
-        for (int y = 0; y < 8; y++) {
-            for (int x = 0; x < 8; x++) {
-                if (board[y][x] != 0) continue;
-                boolean valid = false;
-
-                for (int dx = -1; dx <= 1 && !valid; dx++) {
-                    for (int dy = -1; dy <= 1 && !valid; dy++) {
-                        if (dx == 0 && dy == 0) continue;
-                        if (flipDirection(x, y, dx, dy, player, opponent, false)) {
-                            valid = true;
-
-                        }
-                    }
-                }
-                if (valid) moves.add(new Move(x, y));
-            }
+    public int[][] getBoard() {
+        int[][] b = new int[8][8];
+        for (int pos = 0; pos < 64; pos++) {
+            long m = 1L << pos;
+            int x = pos % 8;
+            int y = pos / 8;
+            if ((playerBlackBoard & m) != 0L) b[y][x] = 1;
+            else if ((playerWhiteBoard & m) != 0L) b[y][x] = 2;
+            else b[y][x] = 0;
         }
-        return moves.isEmpty() ? null : moves;
+        return b;
     }
 
 
+    public int getPlayer1count() { return player1count; }
+    public int getPlayer2count() { return player2count; }
+
+    public Othello copy() {
+        Othello copiedBoard = new Othello();
+        copiedBoard.playerBlackBoard = this.playerBlackBoard;
+        copiedBoard.playerWhiteBoard = this.playerWhiteBoard;
+        copiedBoard.movecount = this.movecount;
+        copiedBoard.player1count = this.player1count;
+        copiedBoard.player2count = this.player2count;
+        copiedBoard.islastPass = this.islastPass;
+        return copiedBoard;
+    }
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
         for (int y = 0; y < 8; y++) {
             for (int x = 0; x < 8; x++) {
-                if (board[y][x] == 1) sb.append("X");
-                else if (board[y][x] == 2) sb.append("O");
+                long mask = 1L << (y * 8 + x);
+
+                if ((playerBlackBoard & mask) != 0L) sb.append("X");
+                else if ((playerWhiteBoard & mask) != 0L) sb.append("O");
                 else sb.append(".");
+
                 if (x < 7) sb.append(" ");
             }
             if (y < 7) sb.append("\n");
         }
         return sb.toString();
     }
+
 }
