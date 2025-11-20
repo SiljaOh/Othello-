@@ -6,46 +6,46 @@ import java.util.List;
 
 public class Othello implements Game {
 
-    private long p1;   // Bitboard Player 1 (Schwarz)
-    private long p2;   // Bitboard Player 2 (Weiß)
+    private long playerBlackBoard;
+    private long playerWhiteBoard;
     private int movecount;
     private int player1count;
     private int player2count;
 
-    private static final long FILE_A = 0x0101010101010101L;
-    private static final long FILE_H = 0x8080808080808080L;
+    private static final long RowA = 0x0101010101010101L; //??
+    private static final long RowH = 0x8080808080808080L;
 
-    private boolean lastPass = false; // für zwei aufeinanderfolgende Pässe
+    private boolean islastPass = false; // for 2x pass
 
     public Othello() {
         initStartPosition();
     }
 
     private void initStartPosition() {
-        p1 = 0L;
-        p2 = 0L;
+        playerBlackBoard = 0L;
+        playerWhiteBoard = 0L;
 
-        p1 |= bit(3, 4);
-        p1 |= bit(4, 3);
+        playerBlackBoard |= bit(3, 4);
+        playerBlackBoard |= bit(4, 3);
 
-        p2 |= bit(3, 3);
-        p2 |= bit(4, 4);
+        playerWhiteBoard |= bit(3, 3);
+        playerWhiteBoard |= bit(4, 4);
 
         movecount = 4;
         updatecounts();
     }
 
-    private static int idx(int x, int y) { return y * 8 + x; }
-    private static long bit(int x, int y) { return 1L << idx(x, y); }
+    private static int idx(int x, int y) { return y * 8 + x; } //calculate position in long form x and y
+    private static long bit(int x, int y) { return 1L << idx(x, y); } //makes long with only 00 and 1x 1 on the right position
 
     private static long shiftN(long b)  { return b << 8; }
     private static long shiftS(long b)  { return b >>> 8; }
-    private static long shiftE(long b)  { return (b & ~FILE_H) << 1; }
-    private static long shiftW(long b)  { return (b & ~FILE_A) >>> 1; }
-    private static long shiftNE(long b) { return (b & ~FILE_H) << 9; }
-    private static long shiftNW(long b) { return (b & ~FILE_A) << 7; }
-    private static long shiftSE(long b) { return (b & ~FILE_H) >>> 7; }
-    private static long shiftSW(long b) { return (b & ~FILE_A) >>> 9; }
+    private static long shiftE(long b)  { return (b & ~RowH) << 1; }
+    private static long shiftW(long b)  { return (b & ~RowA) >>> 1; }
+    private static long shiftNE(long b) { return (b & ~RowH) << 9; }
+    private static long shiftNW(long b) { return (b & ~RowA) << 7; }
+    private static long shiftSE(long b) { return (b & ~RowH) >>> 7; }
+    private static long shiftSW(long b) { return (b & ~RowA) >>> 9; }
 
     private static long shiftDir(long b, int dir) {
         switch (dir) {
@@ -65,10 +65,10 @@ public class Othello implements Game {
     public boolean makeMove(boolean playerOne, int x, int y) {
         long move = bit(x, y);
 
-        long me  = playerOne ? p1 : p2;
-        long opp = playerOne ? p2 : p1;
+        long meBoard  = playerOne ? playerBlackBoard : playerWhiteBoard;
+        long oppBoard = playerOne ? playerWhiteBoard : playerBlackBoard;
 
-        if (((p1 | p2) & move) != 0L) return false;
+        if (((playerBlackBoard | playerWhiteBoard) & move) != 0L) return false; // if position is occupied
 
         long flips = 0L;
 
@@ -76,56 +76,56 @@ public class Othello implements Game {
             long t = shiftDir(move, dir);
             long mask = 0L;
 
-            while ((t != 0L) && ((t & opp) != 0L)) {
+            while ((t != 0L) && ((t & oppBoard) != 0L)) {
                 mask |= t;
                 t = shiftDir(t, dir);
             }
 
-            if ((t != 0L) && ((t & me) != 0L)) {
+            if ((t != 0L) && ((t & meBoard) != 0L)) {
                 flips |= mask;
             }
         }
 
         if (flips == 0L) return false;
 
-        me ^= (move | flips);
-        opp ^= flips;
+        meBoard ^= (move | flips); //bitwise xor
+        oppBoard ^= flips;
 
         if (playerOne) {
-            p1 = me;
-            p2 = opp;
+            playerBlackBoard = meBoard;
+            playerWhiteBoard = oppBoard;
         } else {
-            p2 = me;
-            p1 = opp;
+            playerWhiteBoard = meBoard;
+            playerBlackBoard = oppBoard;
         }
 
         movecount++;
-        lastPass = false;
+        islastPass = false;
         updatecounts();
         return true;
     }
 
     @Override
     public List<Move> getPossibleMoves(boolean playerOne) {
-        long me  = playerOne ? p1 : p2;
-        long opp = playerOne ? p2 : p1;
-        long empty = ~(p1 | p2);
+        long meBoard  = playerOne ? playerBlackBoard : playerWhiteBoard;
+        long oppBoard = playerOne ? playerWhiteBoard : playerBlackBoard;
+        long empty = ~(playerBlackBoard | playerWhiteBoard); // all empty fields
 
-        long movesBB = 0L;
+        long possibleMovesBoard = 0L;
 
         for (int dir = 0; dir < 8; dir++) {
-            long potential = shiftDir(me, dir) & opp;
+            long potential = shiftDir(meBoard, dir) & oppBoard;
             long t = potential;
             while (t != 0L) {
-                t = shiftDir(t, dir) & opp;
+                t = shiftDir(t, dir) & oppBoard;
                 potential |= t;
             }
             long candidates = shiftDir(potential, dir) & empty;
-            movesBB |= candidates;
+            possibleMovesBoard |= candidates;
         }
 
         List<Move> list = new ArrayList<>();
-        long m = movesBB;
+        long m = possibleMovesBoard;
         while (m != 0L) {
             int pos = Long.numberOfTrailingZeros(m);
             m &= m - 1;
@@ -155,12 +155,12 @@ public class Othello implements Game {
 
     public void pass() {
         movecount++;
-        lastPass = true;
+        islastPass = true;
     }
 
     public void updatecounts() {
-        player1count = Long.bitCount(p1);
-        player2count = Long.bitCount(p2);
+        player1count = Long.bitCount(playerBlackBoard);
+        player2count = Long.bitCount(playerWhiteBoard);
     }
 
     public int[][] getBoard() {
@@ -169,25 +169,43 @@ public class Othello implements Game {
             long m = 1L << pos;
             int x = pos % 8;
             int y = pos / 8;
-            if ((p1 & m) != 0L) b[y][x] = 1;
-            else if ((p2 & m) != 0L) b[y][x] = 2;
+            if ((playerBlackBoard & m) != 0L) b[y][x] = 1;
+            else if ((playerWhiteBoard & m) != 0L) b[y][x] = 2;
             else b[y][x] = 0;
         }
         return b;
     }
 
-    public int getMovecount() { return movecount; }
+
     public int getPlayer1count() { return player1count; }
     public int getPlayer2count() { return player2count; }
 
     public Othello copy() {
-        Othello c = new Othello();
-        c.p1 = this.p1;
-        c.p2 = this.p2;
-        c.movecount = this.movecount;
-        c.player1count = this.player1count;
-        c.player2count = this.player2count;
-        c.lastPass = this.lastPass;
-        return c;
+        Othello copiedBoard = new Othello();
+        copiedBoard.playerBlackBoard = this.playerBlackBoard;
+        copiedBoard.playerWhiteBoard = this.playerWhiteBoard;
+        copiedBoard.movecount = this.movecount;
+        copiedBoard.player1count = this.player1count;
+        copiedBoard.player2count = this.player2count;
+        copiedBoard.islastPass = this.islastPass;
+        return copiedBoard;
     }
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        for (int y = 0; y < 8; y++) {
+            for (int x = 0; x < 8; x++) {
+                long mask = 1L << (y * 8 + x);
+
+                if ((playerBlackBoard & mask) != 0L) sb.append("X");
+                else if ((playerWhiteBoard & mask) != 0L) sb.append("O");
+                else sb.append(".");
+
+                if (x < 7) sb.append(" ");
+            }
+            if (y < 7) sb.append("\n");
+        }
+        return sb.toString();
+    }
+
 }
