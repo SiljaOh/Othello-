@@ -1,0 +1,13 @@
+PERFT
+perft 1 4 OK 0.001
+perft 2 12 OK 0.000
+perft 3 56 OK 0.000
+perft 4 244 OK 0.001
+perft 5 1396 OK 0.001
+perft 6 8200 OK 0.007
+perft 7 55092 OK 0.019
+perft 8 390216 OK 0.057
+perft 9 3005288 OK 0.289
+ARENA
+arena random games 100 wins 97 draws 2 losses 1 ms_per_move 64.5
+arena greedy games 100 wins 97 draws 0 losses 3 ms_per_move 36.4
